@@ -20,4 +20,17 @@ class MfiController extends Controller
             'data' => $mfis
         ]);
     }
+
+    public function adminList()
+    {
+        $mfis = DB::table('mfi_institutions')
+            ->select('id', 'name', 'status', 'created_at')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $mfis
+        ]);
+    }
 }

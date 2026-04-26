@@ -183,34 +183,46 @@ class LoanApplicationController extends Controller
     {
         $user = $request->user();
 
-        // ensure MFI user
-        if (!$user->mfi_id) {
+        // ensure MFI admin
+        if ($user->role !== 'mfi_admin' || !$user->mfi_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not linked to MFI',
-                'data' => null
-            ], 400);
+                'message' => 'Unauthorized',
+            ], 403);
         }
 
-        $applications = DB::table('loan_applications')
+        $query = DB::table('loan_applications')
             ->join('users', 'loan_applications.user_id', '=', 'users.id')
             ->join('loan_products', 'loan_applications.loan_product_id', '=', 'loan_products.id')
-            ->where('loan_applications.mfi_id', $user->mfi_id)
+            ->where('loan_applications.mfi_id', $user->mfi_id);
+
+        // ✅ FILTER: status
+        if ($request->has('status')) {
+            $query->where('loan_applications.status', $request->status);
+        }
+
+        // ✅ SEARCH: applicant name
+        if ($request->has('search')) {
+            $query->where('users.name', 'like', '%' . $request->search . '%');
+        }
+
+        $applications = $query
             ->select(
                 'loan_applications.id',
                 'users.name as applicant_name',
+                'users.email',
                 'loan_products.name as product_name',
                 'loan_applications.amount',
                 'loan_applications.duration_months',
                 'loan_applications.status',
                 'loan_applications.created_at'
             )
-            ->orderBy('loan_applications.created_at', 'desc')
+            ->orderByDesc('loan_applications.created_at')
             ->get();
 
         return response()->json([
             'success' => true,
-            'message' => 'Applications fetched',
+            'message' => 'MFI applications fetched',
             'data' => $applications
         ]);
     }
@@ -489,6 +501,64 @@ class LoanApplicationController extends Controller
             'success' => true,
             'message' => 'Application rejected',
 
+        ]);
+    }
+
+
+    public function myApplications(Request $request)
+    {
+        $user = $request->user();
+
+        // ensure entrepreneur only
+        if ($user->role !== 'entrepreneur') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only entrepreneurs can access this',
+            ], 403);
+        }
+
+        $applications = DB::table('loan_applications')
+            ->join('loan_products', 'loan_applications.loan_product_id', '=', 'loan_products.id')
+            ->join('mfi_institutions', 'loan_applications.mfi_id', '=', 'mfi_institutions.id')
+            ->where('loan_applications.user_id', $user->id)
+            ->select(
+                'loan_applications.id',
+                'loan_products.name as product_name',
+                'mfi_institutions.name as mfi_name',
+                'loan_applications.amount',
+                'loan_applications.duration_months',
+                'loan_applications.status',
+                'loan_applications.created_at'
+            )
+            ->orderByDesc('loan_applications.created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Your applications fetched',
+            'data' => $applications
+        ]);
+    }
+
+    public function adminAll()
+    {
+        $applications = DB::table('loan_applications')
+            ->join('users', 'loan_applications.user_id', '=', 'users.id')
+            ->join('mfi_institutions', 'loan_applications.mfi_id', '=', 'mfi_institutions.id')
+            ->select(
+                'loan_applications.id',
+                'loan_applications.amount',
+                'loan_applications.status',
+                'loan_applications.created_at',
+                'users.name as borrower_name',
+                'mfi_institutions.name as mfi_name'
+            )
+            ->orderByDesc('loan_applications.created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $applications
         ]);
     }
 }

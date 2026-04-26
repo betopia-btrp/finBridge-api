@@ -2,6 +2,7 @@
 
 <?php
 
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LoanApplicationController;
 use App\Http\Controllers\Api\LoanProductController;
@@ -26,6 +27,11 @@ Route::prefix('v1')->group(function () {
     Route::get('/subscription-plans', [SubscriptionController::class, 'plans']);
     Route::get('/subscription-plans/{id}', [SubscriptionController::class, 'showPlan']);
 
+    // ✅ SSL PAYMENT CALLBACKS (PUBLIC — NO AUTH)
+    Route::post('/payment/success', [SubscriptionController::class, 'paymentSuccess']);
+    Route::post('/payment/fail', [SubscriptionController::class, 'paymentFail']);
+    Route::post('/payment/cancel', [SubscriptionController::class, 'paymentCancel']);
+
 
 
 
@@ -45,6 +51,15 @@ Route::prefix('v1')->group(function () {
     });
 
     // 🔒 MFI ONLY
+
+    // 🔓 allow payment even if expired
+    Route::middleware(['auth:sanctum', 'role:mfi_admin'])->group(function () {
+        Route::post('/subscription/subscribe', [SubscriptionController::class, 'subscribe']);
+        Route::get('/mfi/subscription', [SubscriptionController::class, 'current']);
+        Route::get('/mfi/payments', [SubscriptionController::class, 'paymentHistory']);
+        Route::get('/mfi/invoice/{transactionId}', [SubscriptionController::class, 'invoice']);
+    });
+
     Route::middleware(['auth:sanctum', 'role:mfi_admin', 'check.subscription'])->group(function () {
 
         Route::get('/mfi/dashboard', function () {
@@ -68,11 +83,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/mfi/applications/{id}', [LoanApplicationController::class, 'show']);
         Route::post('/mfi/applications/{id}/approve', [LoanApplicationController::class, 'approve']);
         Route::post('/mfi/applications/{id}/reject', [LoanApplicationController::class, 'reject']);
-
-
-        Route::post('/subscription/subscribe', [SubscriptionController::class, 'subscribe']);
-
-        Route::get('/mfi/subscription', [SubscriptionController::class, 'current']);
     });
 
     // 🔒 ENTREPRENEUR ONLY
@@ -87,12 +97,27 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::post('/loan/apply', [LoanApplicationController::class, 'apply']);
+        Route::get('/entrepreneur/applications', [LoanApplicationController::class, 'myApplications']);
     });
 
     // 🔒 platfrom admin ONLY
     Route::middleware(['auth:sanctum', 'role:platform_admin'])->group(function () {
+
         Route::post('/admin/subscription-plans', [SubscriptionController::class, 'storePlan']);
         Route::put('/admin/subscription-plans/{id}', [SubscriptionController::class, 'updatePlan']);
         Route::delete('/admin/subscription-plans/{id}', [SubscriptionController::class, 'deletePlan']);
+
+        // 🔥 NEW
+        Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
+
+        Route::get('/admin/mfis', [MfiController::class, 'adminList']);
+
+        Route::get('/admin/reports/revenue', [AdminController::class, 'revenueReport']);
+
+        Route::get('/admin/payments', [SubscriptionController::class, 'adminPayments']);
+
+        Route::get('/admin/applications', [LoanApplicationController::class, 'adminAll']);
+
+        Route::patch('/admin/subscriptions/{id}/force', [SubscriptionController::class, 'forceActivate']);
     });
 });

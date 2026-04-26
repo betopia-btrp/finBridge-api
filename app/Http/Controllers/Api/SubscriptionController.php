@@ -168,13 +168,13 @@ class SubscriptionController extends Controller
             // 1. create subscription
             $subscriptionId = (string) Str::uuid();
 
-            DB::table('subscriptions')
-                ->where('mfi_id', $user->mfi_id)
-                ->where('status', 'trial')
-                ->update([
-                    'status' => 'expired',
-                    'updated_at' => now(),
-                ]);
+            // DB::table('subscriptions')
+            //     ->where('mfi_id', $user->mfi_id)
+            //     ->where('status', 'trial')
+            //     ->update([
+            //         'status' => 'expired',
+            //         'updated_at' => now(),
+            //     ]);
 
             DB::table('subscriptions')->insert([
                 'id' => $subscriptionId,
@@ -210,9 +210,13 @@ class SubscriptionController extends Controller
                     'currency' => 'BDT',
                     'tran_id' => $transactionId,
 
-                    'success_url' => 'http://localhost:3000/payment-success?transactionId=' . $transactionId,
-                    'fail_url' => 'http://localhost:3000/payment-fail?transactionId=' . $transactionId,
-                    'cancel_url' => 'http://localhost:3000/payment-cancel?transactionId=' . $transactionId,
+                    'success_url' => 'http://127.0.0.1:8000/api/v1/payment/success',
+                    'fail_url' => 'http://127.0.0.1:8000/api/v1/payment/fail',
+                    'cancel_url' => 'http://127.0.0.1:8000/api/v1/payment/cancel',
+
+                    // 'success_url' => 'http://localhost:3000/payment-success?transactionId=' . $transactionId,
+                    // 'fail_url' => 'http://localhost:3000/payment-fail?transactionId=' . $transactionId,
+                    // 'cancel_url' => 'http://localhost:3000/payment-cancel?transactionId=' . $transactionId,
 
                     'cus_name' => $user->name,
                     'cus_email' => $user->email,
@@ -263,27 +267,31 @@ class SubscriptionController extends Controller
     {
         $tranId = $request->tran_id;
 
+        if (!$tranId) {
+            return redirect('http://localhost:3000/payment-success?status=failed');
+        }
+
         $transaction = DB::table('transactions')
             ->where('id', $tranId)
             ->first();
 
         if (!$transaction) {
-            return redirect('http://localhost:3000/payment-error');
+            return redirect('http://localhost:3000/payment-success?status=failed');
         }
 
         DB::beginTransaction();
 
         try {
-            // update transaction
+
+            // ✅ update transaction
             DB::table('transactions')
                 ->where('id', $tranId)
                 ->update([
                     'status' => 'success',
-                    'gateway_transaction_id' => $request->bank_tran_id ?? null,
                     'updated_at' => now(),
                 ]);
 
-            // expire old
+            // ✅ expire old subscriptions
             DB::table('subscriptions')
                 ->where('mfi_id', $transaction->mfi_id)
                 ->whereIn('status', ['trial', 'active'])
@@ -292,24 +300,28 @@ class SubscriptionController extends Controller
                     'updated_at' => now(),
                 ]);
 
-            // activate new
+            // ✅ activate new subscription
             DB::table('subscriptions')
                 ->where('id', $transaction->subscription_id)
                 ->update([
                     'status' => 'active',
+                    'start_date' => now(),
                     'end_date' => now()->addMonth(),
                     'updated_at' => now(),
                 ]);
 
             DB::commit();
 
-            // ✅ REDIRECT TO FRONTEND
-            return redirect('http://localhost:3000/payment-success');
+            return redirect(
+                'http://localhost:3000/payment-success?transactionId=' . $tranId
+            );
         } catch (\Exception $e) {
 
             DB::rollBack();
 
-            return redirect('http://localhost:3000/payment-error');
+            return redirect(
+                'http://localhost:3000/payment-success?status=failed&transactionId=' . $tranId
+            );
         }
     }
 
@@ -317,52 +329,40 @@ class SubscriptionController extends Controller
     {
         $tranId = $request->tran_id;
 
-        DB::table('transactions')
-            ->where('id', $tranId)
-            ->update([
-                'status' => 'failed',
-                'updated_at' => now(),
-            ]);
+        if ($tranId) {
+            DB::table('transactions')
+                ->where('id', $tranId)
+                ->update([
+                    'status' => 'failed',
+                    'updated_at' => now(),
+                ]);
+        }
 
-        DB::table('subscriptions')
-            ->where('id', function ($q) use ($tranId) {
-                $q->select('subscription_id')
-                    ->from('transactions')
-                    ->where('id', $tranId)
-                    ->limit(1);
-            })
-            ->update([
-                'status' => 'failed',
-                'updated_at' => now(),
-            ]);
+        // ❌ DO NOT update subscription status here
 
-        return redirect('http://localhost:3000/payment-fail');
+        return redirect(
+            'http://localhost:3000/payment-success?status=failed&transactionId=' . $tranId
+        );
     }
 
     public function paymentCancel(Request $request)
     {
         $tranId = $request->tran_id;
 
-        DB::table('transactions')
-            ->where('id', $tranId)
-            ->update([
-                'status' => 'cancelled',
-                'updated_at' => now(),
-            ]);
+        if ($tranId) {
+            DB::table('transactions')
+                ->where('id', $tranId)
+                ->update([
+                    'status' => 'cancelled',
+                    'updated_at' => now(),
+                ]);
+        }
 
-        DB::table('subscriptions')
-            ->where('id', function ($q) use ($tranId) {
-                $q->select('subscription_id')
-                    ->from('transactions')
-                    ->where('id', $tranId)
-                    ->limit(1);
-            })
-            ->update([
-                'status' => 'cancelled',
-                'updated_at' => now(),
-            ]);
+        // ❌ DO NOT update subscription status here
 
-        return redirect('http://localhost:3000/payment-cancel');
+        return redirect(
+            'http://localhost:3000/payment-success?status=cancelled&transactionId=' . $tranId
+        );
     }
 
 
@@ -463,5 +463,153 @@ class SubscriptionController extends Controller
                 ]
             ]
         ]);
+    }
+
+    public function paymentHistory(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->mfi_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not linked to MFI'
+            ], 400);
+        }
+
+        $payments = DB::table('transactions')
+            ->join('subscriptions', 'transactions.subscription_id', '=', 'subscriptions.id')
+            ->join('subscription_plans', 'subscriptions.plan_id', '=', 'subscription_plans.id')
+            ->where('transactions.mfi_id', $user->mfi_id)
+            ->orderByDesc('transactions.created_at')
+            ->select(
+                'transactions.id',
+                'transactions.amount',
+                'transactions.status',
+                'transactions.payment_gateway',
+                'transactions.created_at',
+                'subscription_plans.name as plan_name'
+            )
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment history',
+            'data' => $payments
+        ]);
+    }
+
+
+    public function invoice($transactionId, Request $request)
+    {
+        $user = $request->user();
+
+        $transaction = DB::table('transactions')
+            ->join('subscriptions', 'transactions.subscription_id', '=', 'subscriptions.id')
+            ->join('subscription_plans', 'subscriptions.plan_id', '=', 'subscription_plans.id')
+            ->where('transactions.id', $transactionId)
+            ->where('transactions.mfi_id', $user->mfi_id)
+            ->select(
+                'transactions.id',
+                'transactions.amount',
+                'transactions.status',
+                'transactions.created_at',
+                'subscription_plans.name as plan_name',
+                'subscription_plans.price_bdt'
+            )
+            ->first();
+
+        if (!$transaction) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invoice not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'invoice_id' => 'INV-' . strtoupper(substr($transaction->id, 0, 8)),
+                'transaction_id' => $transaction->id,
+                'plan_name' => $transaction->plan_name,
+                'amount' => $transaction->amount,
+                'status' => $transaction->status,
+                'date' => $transaction->created_at
+            ]
+        ]);
+    }
+
+    public function adminPayments()
+    {
+        $payments = DB::table('transactions')
+            ->join('mfi_institutions', 'transactions.mfi_id', '=', 'mfi_institutions.id')
+            ->join('subscriptions', 'transactions.subscription_id', '=', 'subscriptions.id')
+            ->join('subscription_plans', 'subscriptions.plan_id', '=', 'subscription_plans.id')
+            ->select(
+                'transactions.id',
+                'transactions.amount',
+                'transactions.status',
+                'transactions.created_at',
+                'mfi_institutions.name as mfi_name',
+                'subscription_plans.name as plan_name'
+            )
+            ->orderByDesc('transactions.created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $payments
+        ]);
+    }
+
+    public function forceActivate($id)
+    {
+        $subscription = DB::table('subscriptions')->where('id', $id)->first();
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Subscription not found'
+            ], 404);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            // expire old ones
+            DB::table('subscriptions')
+                ->where('mfi_id', $subscription->mfi_id)
+                ->whereIn('status', ['trial', 'active'])
+                ->update([
+                    'status' => 'expired',
+                    'updated_at' => now()
+                ]);
+
+            // activate this
+            DB::table('subscriptions')
+                ->where('id', $id)
+                ->update([
+                    'status' => 'active',
+                    'start_date' => now(),
+                    'end_date' => now()->addMonth(),
+                    'updated_at' => now()
+                ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription activated manually'
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to activate',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
