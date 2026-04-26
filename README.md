@@ -58,6 +58,18 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
    php artisan key:generate
    ```
 
+   **Required Environment Keys (.env):**
+   Ensure all the following keys are present in your `.env` file:
+
+   | Category | Keys |
+   | :--- | :--- |
+   | **App** | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_LOCALE`, `APP_MAINTENANCE_DRIVER`, `BCRYPT_ROUNDS` |
+   | **Database** | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` |
+   | **Logging** | `LOG_CHANNEL`, `LOG_STACK`, `LOG_LEVEL` |
+   | **Cache & Queue** | `QUEUE_CONNECTION`, `CACHE_STORE`, `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` |
+   | **Mail** | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_ENCRYPTION`, `MAIL_FROM_ADDRESS` |
+   | **SSLCommerz** | `SSL_STORE_ID`, `SSL_STORE_PASSWORD`, `SSL_MODE` |
+
 4. **Database Configuration**
    Configure your database credentials in `.env` and run migrations with seeders:
    ```bash
@@ -69,12 +81,7 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
    - **Password:** `password`
 
 5. **SSLCommerz Setup**
-   Add your SSLCommerz credentials to `.env`:
-   ```env
-   SSL_STORE_ID=your_store_id
-   SSL_STORE_PASSWORD=your_store_password
-   SSL_IS_SANDBOX=true
-   ```
+   Add your SSLCommerz credentials to `.env`. (Check `SSL_MODE=sandbox` for testing).
 
 6. **Run the Application**
    ```bash
