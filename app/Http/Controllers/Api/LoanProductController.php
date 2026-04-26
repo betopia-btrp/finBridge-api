@@ -22,38 +22,49 @@ class LoanProductController extends Controller
             'description' => 'nullable|string',
         ]);
 
-
-
         $user = $request->user();
 
-        // 🔒 subscription check
-        $subscription = $this->getActiveSubscription($user->mfi_id);
-
-        if (!$subscription || now()->gt($subscription->end_date)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Trial expired. Upgrade to continue.',
-                'data' => null
-            ], 403);
-        }
-
-        // role + tenant check (combined clean)
+        // ✅ role check FIRST
         if ($user->role !== 'mfi_admin' || !$user->mfi_id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Only MFI admin can create loan products',
-                'data' => null
             ], 403);
         }
 
+        // ✅ subscription from middleware
+        $subscription = $request->attributes->get('subscription');
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Subscription missing'
+            ], 403);
+        }
+
+        // ✅ trial limit
+        if ($subscription->plan_name === 'trial') {
+
+            $count = DB::table('loan_products')
+                ->where('mfi_id', $user->mfi_id)
+                ->count();
+
+            if ($count >= 2) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Trial allows only 2 loan products. Upgrade to Pro.'
+                ], 403);
+            }
+        }
+
+        // validation logic
         if ($request->min_amount && $request->min_amount > $request->max_amount) {
             return response()->json([
                 'success' => false,
                 'message' => 'Min amount cannot be greater than max amount',
-                'data' => null
             ], 400);
         }
-        // generate ID
+
         $id = Str::uuid();
 
         DB::beginTransaction();
@@ -121,13 +132,116 @@ class LoanProductController extends Controller
         ]);
     }
 
-    private function getActiveSubscription($mfiId)
+    public function myProducts(Request $request)
     {
-        return DB::table('subscriptions')
-            ->join('subscription_plans', 'subscriptions.plan_id', '=', 'subscription_plans.id')
-            ->where('subscriptions.mfi_id', $mfiId)
-            ->whereIn('subscriptions.status', ['trial', 'active'])
-            ->orderByDesc('subscriptions.created_at')
+        $user = $request->user();
+
+        if ($user->role !== 'mfi_admin' || !$user->mfi_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        $products = DB::table('loan_products')
+            ->where('mfi_id', $user->mfi_id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Your loan products',
+            'data' => $products
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'mfi_admin' || !$user->mfi_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        $product = DB::table('loan_products')
+            ->where('id', $id)
+            ->where('mfi_id', $user->mfi_id)
             ->first();
+
+        if (!$product) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found',
+            ], 404);
+        }
+
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'max_amount' => 'sometimes|numeric|min:1',
+            'min_amount' => 'nullable|numeric|min:0',
+            'interest_rate' => 'sometimes|numeric|min:0',
+            'processing_fee' => 'nullable|numeric|min:0',
+            'duration_months' => 'sometimes|integer|min:1',
+            'description' => 'nullable|string',
+        ]);
+
+        DB::table('loan_products')
+            ->where('id', $id)
+            ->update([
+                'name' => $request->name ?? $product->name,
+                'description' => $request->description ?? $product->description,
+                'min_amount' => $request->min_amount ?? $product->min_amount,
+                'max_amount' => $request->max_amount ?? $product->max_amount,
+                'interest_rate' => $request->interest_rate ?? $product->interest_rate,
+                'processing_fee' => $request->processing_fee ?? $product->processing_fee,
+                'duration_months' => $request->duration_months ?? $product->duration_months,
+                'updated_at' => now(),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Loan product updated'
+        ]);
+    }
+
+    public function delete(Request $request, $id)
+    {
+
+        \Log::info('DELETE HIT', [
+            'user' => $request->user()
+        ]);
+
+        $user = $request->user();
+
+        if ($user->role !== 'mfi_admin' || !$user->mfi_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        $product = DB::table('loan_products')
+            ->where('id', $id)
+            ->where('mfi_id', $user->mfi_id)
+            ->first();
+
+        if (!$product) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found',
+            ], 404);
+        }
+
+        DB::table('loan_products')
+            ->where('id', $id)
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Loan product deleted'
+        ]);
     }
 }

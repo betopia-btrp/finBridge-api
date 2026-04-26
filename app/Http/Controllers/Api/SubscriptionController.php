@@ -365,58 +365,7 @@ class SubscriptionController extends Controller
         return redirect('http://localhost:3000/payment-cancel');
     }
 
-    public function confirmPayment(Request $request)
-    {
-        $transactionId = $request->transaction_id;
 
-        DB::beginTransaction();
-
-        try {
-            $transaction = DB::table('transactions')
-                ->where('id', $transactionId)
-                ->first();
-
-            if (!$transaction) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid transaction'
-                ], 404);
-            }
-
-            // update transaction
-            DB::table('transactions')
-                ->where('id', $transactionId)
-                ->update([
-                    'status' => 'success',
-                    'updated_at' => now(),
-                ]);
-
-            // activate subscription
-            DB::table('subscriptions')
-                ->where('id', $transaction->subscription_id)
-                ->update([
-                    'status' => 'active',
-                    'end_date' => now()->addMonth(),
-                    'updated_at' => now(),
-                ]);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Subscription activated'
-            ]);
-        } catch (\Exception $e) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed',
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
 
 
     public function current(Request $request)
@@ -430,10 +379,15 @@ class SubscriptionController extends Controller
             ], 400);
         }
 
+
         // get latest subscription
         $subscription = DB::table('subscriptions')
             ->join('subscription_plans', 'subscriptions.plan_id', '=', 'subscription_plans.id')
             ->where('subscriptions.mfi_id', $user->mfi_id)
+            ->where(function ($q) {
+                $q->whereNull('subscriptions.end_date')
+                    ->orWhere('subscriptions.end_date', '>', now());
+            })
             ->orderByDesc('subscriptions.created_at')
             ->select(
                 'subscriptions.id',
@@ -452,12 +406,38 @@ class SubscriptionController extends Controller
                 'data' => null
             ]);
         }
+        $transaction = DB::table('transactions')
+            ->where('subscription_id', $subscription->id)
+            ->latest('created_at')
+            ->first();
+
+
+        $usage = [
+            'approved_loans' => DB::table('loan_applications')
+                ->where('mfi_id', $user->mfi_id)
+                ->where('status', 'approved')
+                ->count(),
+
+            'loan_products' => DB::table('loan_products')
+                ->where('mfi_id', $user->mfi_id)
+                ->count(),
+        ];
 
         // simple feature logic (your "unique simple idea")
+
         $features = [
-            'can_create_loan_products' => $subscription->plan_name === 'pro',
-            'priority_listing' => $subscription->plan_name === 'pro',
-            'analytics_dashboard' => $subscription->plan_name === 'pro',
+            'can_create_loan_products' => (
+                $subscription->plan_name === 'pro' &&
+                $subscription->status === 'active'
+            ),
+            'priority_listing' => (
+                $subscription->plan_name === 'pro' &&
+                $subscription->status === 'active'
+            ),
+            'analytics_dashboard' => (
+                $subscription->plan_name === 'pro' &&
+                $subscription->status === 'active'
+            ),
             'more_features_coming' => true
         ];
 
@@ -471,76 +451,17 @@ class SubscriptionController extends Controller
                 'status' => $subscription->status,
                 'start_date' => $subscription->start_date,
                 'end_date' => $subscription->end_date,
-                'features' => $features
+                'features' => $features,
+                'limits' => [
+                    'max_approvals' => $subscription->plan_name === 'trial' ? 3 : 'unlimited',
+                    'max_products' => $subscription->plan_name === 'trial' ? 2 : 'unlimited',
+                ],
+                'usage' => $usage,
+                'payment' => [
+                    'status' => $transaction->status ?? null,
+                    'amount' => $transaction->amount ?? null,
+                ]
             ]
         ]);
-    }
-
-    public function upgrade(Request $request)
-    {
-        $user = $request->user();
-
-        if (!$user->mfi_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not linked to MFI',
-                'data' => null
-            ], 400);
-        }
-
-        // get PRO plan
-        $proPlan = DB::table('subscription_plans')
-            ->where('name', 'pro')
-            ->first();
-
-        if (!$proPlan) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Pro plan not found',
-                'data' => null
-            ], 404);
-        }
-
-        DB::beginTransaction();
-
-        try {
-            // 1. expire old subscription
-            DB::table('subscriptions')
-                ->where('mfi_id', $user->mfi_id)
-                ->whereIn('status', ['trial', 'active'])
-                ->update([
-                    'status' => 'expired',
-                    'updated_at' => now()
-                ]);
-
-            // 2. create new PRO subscription
-            DB::table('subscriptions')->insert([
-                'id' => Str::uuid(),
-                'mfi_id' => $user->mfi_id,
-                'plan_id' => $proPlan->id,
-                'start_date' => now(),
-                'end_date' => now()->addMonth(), // simple monthly
-                'status' => 'active',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Upgraded to Pro successfully',
-                'data' => null
-            ]);
-        } catch (\Exception $e) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Upgrade failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
     }
 }

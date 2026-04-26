@@ -11,14 +11,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
 
-    Route::get('/test-mail', function () {
-        \Illuminate\Support\Facades\Mail::raw('Test email from FinBridge', function ($message) {
-            $message->to('test@example.com')
-                ->subject('Test Mail');
-        });
 
-        return 'Mail sent';
-    });
 
     // public endpoints
     Route::post('/auth/register/mfi', [AuthController::class, 'registerMfi']);
@@ -37,14 +30,6 @@ Route::prefix('v1')->group(function () {
 
 
 
-    Route::post('/payment/confirm', [SubscriptionController::class, 'confirmPayment']);
-
-    // // SSL CALLBACKS (NO AUTH, PUBLIC)
-    // Route::post('/payment/success', [SubscriptionController::class, 'paymentSuccess']);
-    // Route::post('/payment/fail', [SubscriptionController::class, 'paymentFail']);
-    // Route::post('/payment/cancel', [SubscriptionController::class, 'paymentCancel']);;
-
-
     Route::middleware('auth:sanctum')->post('/auth/logout', [AuthController::class, 'logout']);
 
     // 🔒 PROTECTED
@@ -60,7 +45,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // 🔒 MFI ONLY
-    Route::middleware(['auth:sanctum', 'role:mfi_admin'])->group(function () {
+    Route::middleware(['auth:sanctum', 'role:mfi_admin', 'check.subscription'])->group(function () {
 
         Route::get('/mfi/dashboard', function () {
             return response()->json([
@@ -71,11 +56,19 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::post('/mfi/loan-products', [LoanProductController::class, 'store']);
+        Route::get('/mfi/loan-products', [LoanProductController::class, 'myProducts']);
+        Route::put('/mfi/loan-products/{id}', [LoanProductController::class, 'update']);
+
+        // FIX : TODO
+        Route::delete('/mfi/loan-products/{id}', [LoanProductController::class, 'delete']);
+
+
+
         Route::get('/mfi/applications', [LoanApplicationController::class, 'mfiApplications']);
         Route::get('/mfi/applications/{id}', [LoanApplicationController::class, 'show']);
         Route::post('/mfi/applications/{id}/approve', [LoanApplicationController::class, 'approve']);
         Route::post('/mfi/applications/{id}/reject', [LoanApplicationController::class, 'reject']);
-        Route::post('/subscription/upgrade', [SubscriptionController::class, 'upgrade']);
+
 
         Route::post('/subscription/subscribe', [SubscriptionController::class, 'subscribe']);
 

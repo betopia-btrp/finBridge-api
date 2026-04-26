@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\SubscriptionHelper;
 use App\Http\Controllers\Controller;
 use App\Mail\LoanApplicationSubmitted;
 use App\Mail\LoanApproved;
@@ -296,35 +297,41 @@ class LoanApplicationController extends Controller
     {
         $user = $request->user();
 
-        // 🔒 subscription check
-        $subscription = $this->getActiveSubscription($user->mfi_id);
-
-        if (!$subscription || now()->gt($subscription->end_date)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Trial expired. Upgrade to continue.',
-                'data' => null
-            ], 403);
-        }
-
-        // 🚫 block trial users
-        if ($subscription->status === 'trial') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Upgrade to Pro to approve applications',
-                'data' => null
-            ], 403);
-        }
-
-
-
+        // ✅ role first
         if ($user->role !== 'mfi_admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
-                'data' => null
             ], 403);
         }
+
+        // ✅ subscription
+        $subscription = $request->attributes->get('subscription');
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Subscription missing'
+            ], 403);
+        }
+
+        // ✅ trial limit
+        if ($subscription->plan_name === 'trial') {
+
+            $count = DB::table('loan_applications')
+                ->where('mfi_id', $user->mfi_id)
+                ->whereIn('status', ['approved', 'rejected'])
+                ->count();
+
+            if ($count >= 3) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Trial limit reached (3 actions). Upgrade to Pro.'
+                ], 403);
+            }
+        }
+
+
 
         $application = DB::table('loan_applications')
             ->where('id', $id)
@@ -378,7 +385,6 @@ class LoanApplicationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Application approved',
-            'data' => null
         ]);
     }
 
@@ -388,34 +394,40 @@ class LoanApplicationController extends Controller
     {
         $user = $request->user();
 
-        // 🔒 subscription check
-        $subscription = $this->getActiveSubscription($user->mfi_id);
-
-        if (!$subscription || now()->gt($subscription->end_date)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Trial expired. Upgrade to continue.',
-                'data' => null
-            ], 403);
-        }
-
-        // 🚫 block trial users
-        if ($subscription->status === 'trial') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Upgrade to Pro to reject applications',
-                'data' => null
-            ], 403);
-        }
-
-        // 🔒 role check
+        // ✅ role first
         if ($user->role !== 'mfi_admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
-                'data' => null
             ], 403);
         }
+
+        // ✅ subscription
+        $subscription = $request->attributes->get('subscription');
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Subscription missing'
+            ], 403);
+        }
+
+        // ✅ trial limit
+        if ($subscription->plan_name === 'trial') {
+
+            $count = DB::table('loan_applications')
+                ->where('mfi_id', $user->mfi_id)
+                ->whereIn('status', ['approved', 'rejected'])
+                ->count();
+
+            if ($count >= 3) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Trial limit reached (3 actions). Upgrade to Pro.'
+                ], 403);
+            }
+        }
+
 
         // 🔍 find application
         $application = DB::table('loan_applications')
@@ -476,18 +488,7 @@ class LoanApplicationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Application rejected',
-            'data' => null
+
         ]);
-    }
-
-
-    private function getActiveSubscription($mfiId)
-    {
-        return DB::table('subscriptions')
-            ->join('subscription_plans', 'subscriptions.plan_id', '=', 'subscription_plans.id')
-            ->where('subscriptions.mfi_id', $mfiId)
-            ->whereIn('subscriptions.status', ['trial', 'active'])
-            ->orderByDesc('subscriptions.created_at')
-            ->first();
     }
 }
