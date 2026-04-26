@@ -1,58 +1,178 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🚀 FinBridge API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+[![Laravel](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=for-the-badge&logo=laravel)](https://laravel.com)
+[![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?style=for-the-badge&logo=php)](https://php.net)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-## About Laravel
+FinBridge is a comprehensive Fintech solution bridging the gap between Microfinance Institutions (MFIs) and Entrepreneurs. This repository contains the robust RESTful API built with Laravel, featuring role-based access control, subscription management, and integrated payment processing.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🛠 Tech Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Core:** Laravel 13.x
+- **Database:** MySQL / PostgreSQL
+- **Authentication:** Laravel Sanctum (Token-based)
+- **Payment Gateway:** SSLCommerz Integration
+- **Testing:** Pest PHP
+- **Infrastructure:** Redis for Caching (Predis)
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## ✨ Key Features
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **Multi-Role System:** Platform Admin, MFI Admin, and Entrepreneur.
+- **Subscription Management:** Tiered plans (Trial, Pro) with feature limits.
+- **Loan Lifecycle:** Product creation, application submission, and approval workflow.
+- **Real-time Analytics:** Dashboard for both MFI and Platform administrators.
+- **Automated Invoicing:** Professional invoice generation for subscriptions.
+- **Email Notifications:** Automated alerts for loan status changes.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+---
 
-## Agentic Development
+## 🚀 Getting Started
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Prerequisites
+- PHP >= 8.3
+- Composer
+- MySQL / PostgreSQL
+- Redis (Optional, for caching)
 
-```bash
-composer require laravel/boost --dev
+### Installation Steps
 
-php artisan boost:install
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/Sabuj-Chowdhury/finBridge-api.git
+   cd finBridge-api
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   composer install
+   npm install
+   ```
+
+3. **Environment Setup**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+
+4. **Database Configuration**
+   Configure your database credentials in `.env` and run migrations with seeders:
+   ```bash
+   php artisan migrate --seed
+   ```
+
+   **Default Admin Credentials:**
+   - **Email:** `admin@finbridge.com`
+   - **Password:** `password`
+
+5. **SSLCommerz Setup**
+   Add your SSLCommerz credentials to `.env`:
+   ```env
+   SSL_STORE_ID=your_store_id
+   SSL_STORE_PASSWORD=your_store_password
+   SSL_IS_SANDBOX=true
+   ```
+
+6. **Run the Application**
+   ```bash
+   php artisan serve
+   ```
+
+---
+
+## 📑 API Documentation
+
+### 🔐 Authentication
+
+| Endpoint | Method | Payload | Description |
+| :--- | :--- | :--- | :--- |
+| `/api/v1/auth/register/mfi` | `POST` | `name, email, phone, password, mfi_name, mfi_email?, mfi_phone?` | Register as an MFI Admin |
+| `/api/v1/auth/register/entrepreneur` | `POST` | `name, email, phone, password` | Register as an Entrepreneur |
+| `/api/v1/auth/login` | `POST` | `email, password` | Login to get API Token |
+| `/api/v1/auth/logout` | `POST` | `Header: Authorization` | Revoke current token |
+
+**Sample Login Response:**
+```json
+{
+    "success": true,
+    "message": "Login successful",
+    "data": {
+        "user": { "id": "...", "name": "John Doe", "role": "entrepreneur" },
+        "token": "1|abcdef123456..."
+    }
+}
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+### 💰 Subscription & Payments
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/v1/subscription-plans` | `GET` | List all available subscription plans |
+| `/api/v1/subscription/subscribe` | `POST` | Initiate payment for a plan (`plan_id`) |
+| `/api/v1/mfi/subscription` | `GET` | View current subscription status & limits |
+| `/api/v1/mfi/payments` | `GET` | View payment history |
+| `/api/v1/mfi/invoice/{id}` | `GET` | Get invoice details for a transaction |
 
-## Code of Conduct
+---
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 🏦 Loan Management
 
-## Security Vulnerabilities
+#### For Entrepreneurs
+| Endpoint | Method | Payload | Description |
+| :--- | :--- | :--- | :--- |
+| `/api/v1/loan-products` | `GET` | - | Browse all active loan products |
+| `/api/v1/loan/apply` | `POST` | `mfi_id, loan_product_id, amount, duration_months, nid (file), tax?, tin?` | Apply for a loan (Multipart) |
+| `/api/v1/entrepreneur/applications` | `GET` | - | View my loan applications |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+#### For MFIs
+| Endpoint | Method | Payload | Description |
+| :--- | :--- | :--- | :--- |
+| `/api/v1/mfi/loan-products` | `GET` | - | List MFI's own products |
+| `/api/v1/mfi/loan-products` | `POST` | `name, max_amount, interest_rate, duration_months, description?` | Create a new loan product |
+| `/api/v1/mfi/applications` | `GET` | `status?, search?` | List applications received by this MFI |
+| `/api/v1/mfi/applications/{id}/approve` | `POST` | - | Approve a pending application |
+| `/api/v1/mfi/applications/{id}/reject` | `POST` | - | Reject a pending application |
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 🛡 Platform Admin
+
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/v1/admin/dashboard` | `GET` | Global stats (Total revenue, active MFIs, etc.) |
+| `/api/v1/admin/reports/revenue` | `GET` | Detailed revenue report with trends |
+| `/api/v1/admin/mfis` | `GET` | Manage MFI institutions |
+| `/api/v1/admin/applications` | `GET` | View all system-wide applications |
+| `/api/v1/admin/subscription-plans` | `POST` | Create a new subscription plan |
+
+---
+
+## 🛑 Error Responses
+
+The API uses standard HTTP status codes:
+- `200/201`: Success
+- `400`: Bad Request (Validation failure)
+- `401`: Unauthorized (Missing/invalid token)
+- `403`: Forbidden (Insufficient role or expired subscription)
+- `404`: Not Found
+- `500`: System Error
+
+---
+
+## 🧪 Testing
+
+Run the test suite using Pest:
+```bash
+php artisan test
+```
+
+## 📄 License
+The FinBridge API is open-sourced software licensed under the [MIT license](LICENSE).
+
+---
+<p align="center">Made with ❤️ by Sabuj Chowdhury</p>
