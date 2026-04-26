@@ -135,17 +135,19 @@ class SubscriptionController extends Controller
         }
 
         // prevent duplicate subscription
-        $existing = DB::table('subscriptions')
+
+        $existingActive = DB::table('subscriptions')
             ->where('mfi_id', $user->mfi_id)
-            ->whereIn('status', ['pending_payment', 'active'])
+            ->where('status', 'active')
             ->first();
 
-        if ($existing) {
+        if ($existingActive) {
             return response()->json([
                 'success' => false,
-                'message' => 'Existing subscription found'
+                'message' => 'You already have an active paid plan'
             ], 400);
         }
+
 
         // get plan
         $plan = DB::table('subscription_plans')
@@ -165,6 +167,14 @@ class SubscriptionController extends Controller
 
             // 1. create subscription
             $subscriptionId = (string) Str::uuid();
+
+            DB::table('subscriptions')
+                ->where('mfi_id', $user->mfi_id)
+                ->where('status', 'trial')
+                ->update([
+                    'status' => 'expired',
+                    'updated_at' => now(),
+                ]);
 
             DB::table('subscriptions')->insert([
                 'id' => $subscriptionId,
@@ -303,13 +313,55 @@ class SubscriptionController extends Controller
         }
     }
 
-    public function paymentFail()
+    public function paymentFail(Request $request)
     {
+        $tranId = $request->tran_id;
+
+        DB::table('transactions')
+            ->where('id', $tranId)
+            ->update([
+                'status' => 'failed',
+                'updated_at' => now(),
+            ]);
+
+        DB::table('subscriptions')
+            ->where('id', function ($q) use ($tranId) {
+                $q->select('subscription_id')
+                    ->from('transactions')
+                    ->where('id', $tranId)
+                    ->limit(1);
+            })
+            ->update([
+                'status' => 'failed',
+                'updated_at' => now(),
+            ]);
+
         return redirect('http://localhost:3000/payment-fail');
     }
 
-    public function paymentCancel()
+    public function paymentCancel(Request $request)
     {
+        $tranId = $request->tran_id;
+
+        DB::table('transactions')
+            ->where('id', $tranId)
+            ->update([
+                'status' => 'cancelled',
+                'updated_at' => now(),
+            ]);
+
+        DB::table('subscriptions')
+            ->where('id', function ($q) use ($tranId) {
+                $q->select('subscription_id')
+                    ->from('transactions')
+                    ->where('id', $tranId)
+                    ->limit(1);
+            })
+            ->update([
+                'status' => 'cancelled',
+                'updated_at' => now(),
+            ]);
+
         return redirect('http://localhost:3000/payment-cancel');
     }
 
@@ -364,6 +416,64 @@ class SubscriptionController extends Controller
                 'error' => $e->getMessage()
             ]);
         }
+    }
+
+
+    public function current(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->mfi_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not linked to MFI'
+            ], 400);
+        }
+
+        // get latest subscription
+        $subscription = DB::table('subscriptions')
+            ->join('subscription_plans', 'subscriptions.plan_id', '=', 'subscription_plans.id')
+            ->where('subscriptions.mfi_id', $user->mfi_id)
+            ->orderByDesc('subscriptions.created_at')
+            ->select(
+                'subscriptions.id',
+                'subscriptions.status',
+                'subscriptions.start_date',
+                'subscriptions.end_date', // if exists
+                'subscription_plans.name as plan_name',
+                'subscription_plans.price_bdt'
+            )
+            ->first();
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No subscription found',
+                'data' => null
+            ]);
+        }
+
+        // simple feature logic (your "unique simple idea")
+        $features = [
+            'can_create_loan_products' => $subscription->plan_name === 'pro',
+            'priority_listing' => $subscription->plan_name === 'pro',
+            'analytics_dashboard' => $subscription->plan_name === 'pro',
+            'more_features_coming' => true
+        ];
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Current subscription',
+            'data' => [
+                'subscription_id' => $subscription->id,
+                'plan_name' => $subscription->plan_name,
+                'price_bdt' => $subscription->price_bdt,
+                'status' => $subscription->status,
+                'start_date' => $subscription->start_date,
+                'end_date' => $subscription->end_date,
+                'features' => $features
+            ]
+        ]);
     }
 
     public function upgrade(Request $request)

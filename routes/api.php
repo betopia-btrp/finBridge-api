@@ -78,6 +78,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/subscription/upgrade', [SubscriptionController::class, 'upgrade']);
 
         Route::post('/subscription/subscribe', [SubscriptionController::class, 'subscribe']);
+
+        Route::get('/mfi/subscription', [SubscriptionController::class, 'current']);
     });
 
     // 🔒 ENTREPRENEUR ONLY
