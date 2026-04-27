@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Helpers\SubscriptionHelper;
+
 use App\Http\Controllers\Controller;
 use App\Mail\LoanApplicationSubmitted;
 use App\Mail\LoanApproved;
@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Cloudinary\Cloudinary;
 
 class LoanApplicationController extends Controller
 {
@@ -110,20 +111,44 @@ class LoanApplicationController extends Controller
             ]);
 
             // NID (required)
-            $nidPath = $request->file('nid')->store('documents', 'public');
+
+
+            $cloudinary = new Cloudinary([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                    'api_key'    => env('CLOUDINARY_API_KEY'),
+                    'api_secret' => env('CLOUDINARY_API_SECRET'),
+                ],
+            ]);
+            // $nidPath = $request->file('nid')->store('documents', 'public');
+
+            $nidUpload = $cloudinary->uploadApi()->upload(
+                $request->file('nid')->getRealPath(),
+                [
+                    'folder' => 'loan_documents'
+                ]
+            );
+
+            $nidUrl = $nidUpload['secure_url'];
 
             DB::table('application_documents')->insert([
                 'id' => Str::uuid(),
                 'loan_application_id' => $applicationId,
                 'type' => 'nid',
-                'file_path' => $nidPath,
+                'file_path' => $nidUrl,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
             // tax (optional)
             if ($request->hasFile('tax')) {
-                $path = $request->file('tax')->store('documents', 'public');
+                // $path = $request->file('tax')->store('documents', 'public');
+
+                $upload = $cloudinary->uploadApi()->upload(
+                    $request->file('tax')->getRealPath()
+                );
+
+                $path = $upload['secure_url'];
 
                 DB::table('application_documents')->insert([
                     'id' => Str::uuid(),
@@ -137,7 +162,13 @@ class LoanApplicationController extends Controller
 
             // tin (optional)
             if ($request->hasFile('tin')) {
-                $path = $request->file('tin')->store('documents', 'public');
+                // $path = $request->file('tin')->store('documents', 'public');
+
+                $upload = $cloudinary->uploadApi()->upload(
+                    $request->file('tax')->getRealPath()
+                );
+
+                $path = $upload['secure_url'];
 
                 DB::table('application_documents')->insert([
                     'id' => Str::uuid(),
@@ -281,7 +312,8 @@ class LoanApplicationController extends Controller
                 $documents[] = [
                     'type' => $doc->type,
                     'file_path' => $doc->file_path,
-                    'url' => url('storage/' . $doc->file_path),
+                    // 'url' => url('storage/' . $doc->file_path),
+                    'url' => $doc->file_path,
                 ];
             }
 
