@@ -200,6 +200,8 @@ class SubscriptionController extends Controller
                 'updated_at' => now(),
             ]);
 
+            $backend = config('app.url');
+
             // 3. call SSL
             $response = Http::asForm()->post(
                 'https://sandbox.sslcommerz.com/gwprocess/v4/api.php',
@@ -210,13 +212,15 @@ class SubscriptionController extends Controller
                     'currency' => 'BDT',
                     'tran_id' => $transactionId,
 
-                    'success_url' => 'http://127.0.0.1:8000/api/v1/payment/success',
-                    'fail_url' => 'http://127.0.0.1:8000/api/v1/payment/fail',
-                    'cancel_url' => 'http://127.0.0.1:8000/api/v1/payment/cancel',
+                    'success_url' => $backend . '/api/v1/payment/success',
+                    'fail_url'    => $backend . '/api/v1/payment/fail',
+                    'cancel_url'  => $backend . '/api/v1/payment/cancel',
 
-                    // 'success_url' => 'http://localhost:3000/payment-success?transactionId=' . $transactionId,
-                    // 'fail_url' => 'http://localhost:3000/payment-fail?transactionId=' . $transactionId,
-                    // 'cancel_url' => 'http://localhost:3000/payment-cancel?transactionId=' . $transactionId,
+                    // 'success_url' => 'http://127.0.0.1:8000/api/v1/payment/success',
+                    // 'fail_url' => 'http://127.0.0.1:8000/api/v1/payment/fail',
+                    // 'cancel_url' => 'http://127.0.0.1:8000/api/v1/payment/cancel',
+
+
 
                     'cus_name' => $user->name,
                     'cus_email' => $user->email,
@@ -266,17 +270,23 @@ class SubscriptionController extends Controller
     public function paymentSuccess(Request $request)
     {
         $tranId = $request->tran_id;
+        $frontend = config('app.frontend_url');
+
+
 
         if (!$tranId) {
-            return redirect('http://localhost:3000/payment-success?status=failed');
+            return redirect($frontend . '/payment-success?status=failed');
         }
+
+
+
 
         $transaction = DB::table('transactions')
             ->where('id', $tranId)
             ->first();
 
         if (!$transaction) {
-            return redirect('http://localhost:3000/payment-success?status=failed');
+            return redirect($frontend . '/payment-success?status=failed');
         }
 
         DB::beginTransaction();
@@ -312,15 +322,15 @@ class SubscriptionController extends Controller
 
             DB::commit();
 
-            return redirect(
-                'http://localhost:3000/payment-success?transactionId=' . $tranId
-            );
+
+
+            return redirect($frontend . '/payment-success?transactionId=' . $tranId);
         } catch (\Exception $e) {
 
             DB::rollBack();
 
             return redirect(
-                'http://localhost:3000/payment-success?status=failed&transactionId=' . $tranId
+                $frontend . '/payment-success?status=failed&transactionId=' . $tranId
             );
         }
     }
@@ -340,8 +350,10 @@ class SubscriptionController extends Controller
 
         // ❌ DO NOT update subscription status here
 
+        $frontend = config('app.frontend_url');
+
         return redirect(
-            'http://localhost:3000/payment-success?status=failed&transactionId=' . $tranId
+            $frontend . '/payment-success?status=failed&transactionId=' . $tranId
         );
     }
 
@@ -360,8 +372,10 @@ class SubscriptionController extends Controller
 
         // ❌ DO NOT update subscription status here
 
+        $frontend = config('app.frontend_url');
+
         return redirect(
-            'http://localhost:3000/payment-success?status=cancelled&transactionId=' . $tranId
+            $frontend . '/payment-success?status=cancelled&transactionId=' . $tranId
         );
     }
 
