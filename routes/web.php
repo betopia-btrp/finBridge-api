@@ -4,6 +4,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return response()->json([
-        'message' => 'FinBridge API is running 🚀'
+        'message' => 'FinBridge API is running ...'
     ]);
 });
