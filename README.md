@@ -36,7 +36,7 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
 
 - PHP >= 8.3
 - Composer
-- MySQL / PostgreSQL
+- PostgreSQL (Must be running in the background)
 - Redis (Optional, for caching)
 
 ### Installation Steps
@@ -62,7 +62,7 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
     ```
 
     **Required Environment Keys (.env):**
-    Ensure all the following keys are present in your `.env` file:
+    Ensure all the following keys are present in your `.env` file: especially database config
 
     | Category          | Keys                                                                                                              |
     | :---------------- | :---------------------------------------------------------------------------------------------------------------- |
@@ -89,7 +89,7 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
 
 6. **Run the Application**
     ```bash
-    php artisan serve
+    php -S localhost:9000 -t public
     ```
 
 ---
