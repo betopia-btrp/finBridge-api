@@ -11,7 +11,7 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
 ## 🛠 Tech Stack
 
 - **Core:** Laravel 13.x
-- **Database:** MySQL / PostgreSQL
+- **Database:** PostgreSQL
 - **Authentication:** Laravel Sanctum (Token-based)
 - **Payment Gateway:** SSLCommerz Integration
 - **Testing:** Pest PHP
@@ -62,7 +62,8 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
     ```
 
     **Required Environment Keys (.env):**
-    Ensure all the following keys are present in your `.env` file: especially database config
+    Ensure all the following keys are present in your `.env`
+    file: especially database config
 
     | Category          | Keys                                                                                                              |
     | :---------------- | :---------------------------------------------------------------------------------------------------------------- |
@@ -85,7 +86,7 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
     - **Password:** `password`
 
 5. **SSLCommerz Setup**
-   Add your SSLCommerz credentials to `.env`. (Check `SSL_MODE=sandbox` for testing).
+   Auto given when run "php artisan key:generate"
 
 6. **Run the Application**
     ```bash
@@ -193,4 +194,4 @@ The FinBridge API is open-sourced software licensed under the [MIT license](LICE
 
 ---
 
-<p align="center">Made with ❤️ by Sabuj Chowdhury</p>
+<p align="center">Made with by Sabuj Chowdhury</p>
