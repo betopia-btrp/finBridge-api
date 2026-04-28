@@ -44,7 +44,7 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
 1. **Clone the Repository**
 
     ```bash
-    git clone https://github.com/Sabuj-Chowdhury/finBridge-api.git
+    git clone https://github.com/betopia-btrp/finBridge-api.git
     cd finBridge-api
     ```
 
