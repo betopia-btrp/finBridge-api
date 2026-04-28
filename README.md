@@ -33,6 +33,7 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - PHP >= 8.3
 - Composer
 - MySQL / PostgreSQL
@@ -41,52 +42,55 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
 ### Installation Steps
 
 1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/Sabuj-Chowdhury/finBridge-api.git
-   cd finBridge-api
-   ```
+
+    ```bash
+    git clone https://github.com/Sabuj-Chowdhury/finBridge-api.git
+    cd finBridge-api
+    ```
 
 2. **Install Dependencies**
-   ```bash
-   composer install
-   npm install
-   ```
+
+    ```bash
+    composer install
+    ```
 
 3. **Environment Setup**
-   ```bash
-   cp .env.example .env
-   php artisan key:generate
-   ```
 
-   **Required Environment Keys (.env):**
-   Ensure all the following keys are present in your `.env` file:
+    ```bash
+    cp .env.example .env
+    php artisan key:generate
+    ```
 
-   | Category | Keys |
-   | :--- | :--- |
-   | **App** | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_LOCALE`, `APP_MAINTENANCE_DRIVER`, `BCRYPT_ROUNDS` |
-   | **Database** | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` |
-   | **Logging** | `LOG_CHANNEL`, `LOG_STACK`, `LOG_LEVEL` |
-   | **Cache & Queue** | `QUEUE_CONNECTION`, `CACHE_STORE`, `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` |
-   | **Mail** | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_ENCRYPTION`, `MAIL_FROM_ADDRESS` |
-   | **SSLCommerz** | `SSL_STORE_ID`, `SSL_STORE_PASSWORD`, `SSL_MODE` |
+    **Required Environment Keys (.env):**
+    Ensure all the following keys are present in your `.env` file:
+
+    | Category          | Keys                                                                                                              |
+    | :---------------- | :---------------------------------------------------------------------------------------------------------------- |
+    | **App**           | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_LOCALE`, `APP_MAINTENANCE_DRIVER`, `BCRYPT_ROUNDS` |
+    | **Database**      | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`                                |
+    | **Logging**       | `LOG_CHANNEL`, `LOG_STACK`, `LOG_LEVEL`                                                                           |
+    | **Cache & Queue** | `QUEUE_CONNECTION`, `CACHE_STORE`, `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`                   |
+    | **Mail**          | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_ENCRYPTION`, `MAIL_FROM_ADDRESS` |
+    | **SSLCommerz**    | `SSL_STORE_ID`, `SSL_STORE_PASSWORD`, `SSL_MODE`                                                                  |
 
 4. **Database Configuration**
    Configure your database credentials in `.env` and run migrations with seeders:
-   ```bash
-   php artisan migrate --seed
-   ```
 
-   **Default Admin Credentials:**
-   - **Email:** `admin@finbridge.com`
-   - **Password:** `password`
+    ```bash
+    php artisan migrate:fresh --seed
+    ```
+
+    **Default Admin Credentials:**
+    - **Email:** `admin@finbridge.com`
+    - **Password:** `password`
 
 5. **SSLCommerz Setup**
    Add your SSLCommerz credentials to `.env`. (Check `SSL_MODE=sandbox` for testing).
 
 6. **Run the Application**
-   ```bash
-   php artisan serve
-   ```
+    ```bash
+    php artisan serve
+    ```
 
 ---
 
@@ -94,14 +98,15 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
 
 ### 🔐 Authentication
 
-| Endpoint | Method | Payload | Description |
-| :--- | :--- | :--- | :--- |
-| `/api/v1/auth/register/mfi` | `POST` | `name, email, phone, password, mfi_name, mfi_email?, mfi_phone?` | Register as an MFI Admin |
-| `/api/v1/auth/register/entrepreneur` | `POST` | `name, email, phone, password` | Register as an Entrepreneur |
-| `/api/v1/auth/login` | `POST` | `email, password` | Login to get API Token |
-| `/api/v1/auth/logout` | `POST` | `Header: Authorization` | Revoke current token |
+| Endpoint                             | Method | Payload                                                          | Description                 |
+| :----------------------------------- | :----- | :--------------------------------------------------------------- | :-------------------------- |
+| `/api/v1/auth/register/mfi`          | `POST` | `name, email, phone, password, mfi_name, mfi_email?, mfi_phone?` | Register as an MFI Admin    |
+| `/api/v1/auth/register/entrepreneur` | `POST` | `name, email, phone, password`                                   | Register as an Entrepreneur |
+| `/api/v1/auth/login`                 | `POST` | `email, password`                                                | Login to get API Token      |
+| `/api/v1/auth/logout`                | `POST` | `Header: Authorization`                                          | Revoke current token        |
 
 **Sample Login Response:**
+
 ```json
 {
     "success": true,
@@ -117,51 +122,54 @@ FinBridge is a comprehensive Fintech solution bridging the gap between Microfina
 
 ### 💰 Subscription & Payments
 
-| Endpoint | Method | Description |
-| :--- | :--- | :--- |
-| `/api/v1/subscription-plans` | `GET` | List all available subscription plans |
-| `/api/v1/subscription/subscribe` | `POST` | Initiate payment for a plan (`plan_id`) |
-| `/api/v1/mfi/subscription` | `GET` | View current subscription status & limits |
-| `/api/v1/mfi/payments` | `GET` | View payment history |
-| `/api/v1/mfi/invoice/{id}` | `GET` | Get invoice details for a transaction |
+| Endpoint                         | Method | Description                               |
+| :------------------------------- | :----- | :---------------------------------------- |
+| `/api/v1/subscription-plans`     | `GET`  | List all available subscription plans     |
+| `/api/v1/subscription/subscribe` | `POST` | Initiate payment for a plan (`plan_id`)   |
+| `/api/v1/mfi/subscription`       | `GET`  | View current subscription status & limits |
+| `/api/v1/mfi/payments`           | `GET`  | View payment history                      |
+| `/api/v1/mfi/invoice/{id}`       | `GET`  | Get invoice details for a transaction     |
 
 ---
 
 ### 🏦 Loan Management
 
 #### For Entrepreneurs
-| Endpoint | Method | Payload | Description |
-| :--- | :--- | :--- | :--- |
-| `/api/v1/loan-products` | `GET` | - | Browse all active loan products |
-| `/api/v1/loan/apply` | `POST` | `mfi_id, loan_product_id, amount, duration_months, nid (file), tax?, tin?` | Apply for a loan (Multipart) |
-| `/api/v1/entrepreneur/applications` | `GET` | - | View my loan applications |
+
+| Endpoint                            | Method | Payload                                                                    | Description                     |
+| :---------------------------------- | :----- | :------------------------------------------------------------------------- | :------------------------------ |
+| `/api/v1/loan-products`             | `GET`  | -                                                                          | Browse all active loan products |
+| `/api/v1/loan/apply`                | `POST` | `mfi_id, loan_product_id, amount, duration_months, nid (file), tax?, tin?` | Apply for a loan (Multipart)    |
+| `/api/v1/entrepreneur/applications` | `GET`  | -                                                                          | View my loan applications       |
 
 #### For MFIs
-| Endpoint | Method | Payload | Description |
-| :--- | :--- | :--- | :--- |
-| `/api/v1/mfi/loan-products` | `GET` | - | List MFI's own products |
-| `/api/v1/mfi/loan-products` | `POST` | `name, max_amount, interest_rate, duration_months, description?` | Create a new loan product |
-| `/api/v1/mfi/applications` | `GET` | `status?, search?` | List applications received by this MFI |
-| `/api/v1/mfi/applications/{id}/approve` | `POST` | - | Approve a pending application |
-| `/api/v1/mfi/applications/{id}/reject` | `POST` | - | Reject a pending application |
+
+| Endpoint                                | Method | Payload                                                          | Description                            |
+| :-------------------------------------- | :----- | :--------------------------------------------------------------- | :------------------------------------- |
+| `/api/v1/mfi/loan-products`             | `GET`  | -                                                                | List MFI's own products                |
+| `/api/v1/mfi/loan-products`             | `POST` | `name, max_amount, interest_rate, duration_months, description?` | Create a new loan product              |
+| `/api/v1/mfi/applications`              | `GET`  | `status?, search?`                                               | List applications received by this MFI |
+| `/api/v1/mfi/applications/{id}/approve` | `POST` | -                                                                | Approve a pending application          |
+| `/api/v1/mfi/applications/{id}/reject`  | `POST` | -                                                                | Reject a pending application           |
 
 ---
 
 ### 🛡 Platform Admin
 
-| Endpoint | Method | Description |
-| :--- | :--- | :--- |
-| `/api/v1/admin/dashboard` | `GET` | Global stats (Total revenue, active MFIs, etc.) |
-| `/api/v1/admin/reports/revenue` | `GET` | Detailed revenue report with trends |
-| `/api/v1/admin/mfis` | `GET` | Manage MFI institutions |
-| `/api/v1/admin/applications` | `GET` | View all system-wide applications |
-| `/api/v1/admin/subscription-plans` | `POST` | Create a new subscription plan |
+| Endpoint                           | Method | Description                                     |
+| :--------------------------------- | :----- | :---------------------------------------------- |
+| `/api/v1/admin/dashboard`          | `GET`  | Global stats (Total revenue, active MFIs, etc.) |
+| `/api/v1/admin/reports/revenue`    | `GET`  | Detailed revenue report with trends             |
+| `/api/v1/admin/mfis`               | `GET`  | Manage MFI institutions                         |
+| `/api/v1/admin/applications`       | `GET`  | View all system-wide applications               |
+| `/api/v1/admin/subscription-plans` | `POST` | Create a new subscription plan                  |
 
 ---
 
 ## 🛑 Error Responses
 
 The API uses standard HTTP status codes:
+
 - `200/201`: Success
 - `400`: Bad Request (Validation failure)
 - `401`: Unauthorized (Missing/invalid token)
@@ -174,12 +182,15 @@ The API uses standard HTTP status codes:
 ## 🧪 Testing
 
 Run the test suite using Pest:
+
 ```bash
 php artisan test
 ```
 
 ## 📄 License
+
 The FinBridge API is open-sourced software licensed under the [MIT license](LICENSE).
 
 ---
+
 <p align="center">Made with ❤️ by Sabuj Chowdhury</p>

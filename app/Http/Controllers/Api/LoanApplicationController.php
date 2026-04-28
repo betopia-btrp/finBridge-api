@@ -191,6 +191,19 @@ class LoanApplicationController extends Controller
             //     ])
             // );
 
+            try {
+                Mail::to($user->email)->send(
+                    new LoanApplicationSubmitted((object)[
+                        'id' => $applicationId,
+                        'amount' => $request->amount,
+                        'duration_months' => $request->duration_months,
+                        'user_name' => $user->name,
+                    ])
+                );
+            } catch (\Exception $e) {
+                \Log::error('Reject mail failed: ' . $e->getMessage());
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Loan application submitted',
@@ -414,17 +427,17 @@ class LoanApplicationController extends Controller
             ], 404);
         }
 
-        // try {
-        //     Mail::to($userData->email)->send(
-        //         new LoanApproved((object)[
-        //             'id' => $application->id,
-        //             'amount' => $application->amount,
-        //             'user_name' => $userData->name,
-        //         ])
-        //     );
-        // } catch (\Exception $e) {
-        //     \Log::error('Mail failed: ' . $e->getMessage());
-        // }
+        try {
+            Mail::to($userData->email)->send(
+                new LoanApproved((object)[
+                    'id' => $application->id,
+                    'amount' => $application->amount,
+                    'user_name' => $userData->name,
+                ])
+            );
+        } catch (\Exception $e) {
+            \Log::error('Mail failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
@@ -517,17 +530,17 @@ class LoanApplicationController extends Controller
             ], 404);
         }
 
-        // // 📧 send email safely
-        // try {
-        //     Mail::to($userData->email)->send(
-        //         new LoanRejected((object)[
-        //             'id' => $application->id,
-        //             'user_name' => $userData->name,
-        //         ])
-        //     );
-        // } catch (\Exception $e) {
-        //     \Log::error('Reject mail failed: ' . $e->getMessage());
-        // }
+        // 📧 send email safely
+        try {
+            Mail::to($userData->email)->send(
+                new LoanRejected((object)[
+                    'id' => $application->id,
+                    'user_name' => $userData->name,
+                ])
+            );
+        } catch (\Exception $e) {
+            \Log::error('Reject mail failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
